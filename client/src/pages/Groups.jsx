@@ -1,0 +1,98 @@
+import { useState, useEffect } from 'react'
+import { groupService } from '../services/groupService'
+import LoadingSpinner from '../components/LoadingSpinner'
+import { UserGroupIcon, PlusIcon } from '@heroicons/react/24/outline'
+// import toast from 'react-hot-toast'
+
+const Groups = () => {
+  const [userGroup, setUserGroup] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchUserGroup()
+  }, [])
+
+  const fetchUserGroup = async () => {
+    try {
+      setLoading(true)
+      const response = await groupService.getMyGroup()
+      setUserGroup(response.data.data.group)
+    } catch (error) {
+      // User might not be in a group
+      setUserGroup(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return <LoadingSpinner size="lg" className="mt-8" />
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h1 className="text-2xl font-bold text-gray-900">Groups</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage your group membership for collaborative borrowing
+          </p>
+        </div>
+      </div>
+
+      {/* Group Status */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          {userGroup ? (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Your Group</h3>
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-gray-900 mb-2">
+                  {userGroup.name}
+                </h4>
+                <p className="text-sm text-gray-500 mb-3">
+                  {userGroup.members.length} members
+                </p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {userGroup.members.map((member) => (
+                    <span
+                      key={member._id}
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                    >
+                      {member.name}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex space-x-3">
+                  <button className="btn-primary">
+                    Manage Group
+                  </button>
+                  <button className="btn-secondary">
+                    View Borrowed Books
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No group membership</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                You're not currently a member of any group.
+              </p>
+              <div className="mt-6">
+                <button className="btn-primary">
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  Create New Group
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Groups
