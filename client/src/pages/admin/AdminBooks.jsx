@@ -3,10 +3,11 @@ import { bookService } from '../../services/bookService'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-
+import AddBook from '../../components/addbook'
 const AdminBooks = () => {
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [addbook,setaddBook]=useState(false);
 
   useEffect(() => {
     fetchBooks()
@@ -41,7 +42,7 @@ const AdminBooks = () => {
                 Add, edit, and manage the book catalog
               </p>
             </div>
-            <button className="btn-primary">
+            <button className="btn-primary" onClick={()=>{setaddBook(true)}}>
               <PlusIcon className="h-5 w-5 mr-2" />
               Add Book
             </button>
@@ -49,10 +50,12 @@ const AdminBooks = () => {
         </div>
       </div>
 
+      {addbook ? <AddBook className="fixed top-2" setaddBook={setaddBook}/>:<h1></h1>} 
+
       {/* Books Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:p-6">
-          {books.length === 0 ? (
+          {books.length < 1 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 text-6xl mb-4">📚</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No books found</h3>
@@ -86,7 +89,7 @@ const AdminBooks = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {books.map((book) => (
+                  { books.map((book) => (
                     <tr key={book._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
