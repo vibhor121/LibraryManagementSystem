@@ -15,7 +15,7 @@ const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/users');
 const groupRoutes = require('./routes/groups');
-
+const uploadRoute = require('./routes/upload');
 // Import cron jobs
 const { checkOverdueBooks } = require('./utils/cronJobs');
 
@@ -34,7 +34,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
-
+app.use('/api/upload', uploadRoute);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ message: 'Library Management System API is running!' });
