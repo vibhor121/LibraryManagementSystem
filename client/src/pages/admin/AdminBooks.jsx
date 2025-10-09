@@ -3,7 +3,7 @@ import { bookService } from '../../services/bookService'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import AddBook from '../../components/addbook'
+import AddBook from '../../components/Addbook'
 const AdminBooks = () => {
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
