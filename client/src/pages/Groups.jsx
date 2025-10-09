@@ -3,25 +3,53 @@ import { groupService } from '../services/groupService'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { UserGroupIcon, PlusIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import ManageGroupModal from './ManageGroupModal'
+import BorrowedBooksModal from './BorrowedBooksModal'
+
 
 // const Groups = () => {
 //   const [userGroup, setUserGroup] = useState(null)
 //   const [loading, setLoading] = useState(true)
+//   const [creating, setCreating] = useState(false)
 
 //   useEffect(() => {
 //     fetchUserGroup()
 //   }, [])
 
+//   // GET API - fetch user's group
 //   const fetchUserGroup = async () => {
 //     try {
 //       setLoading(true)
 //       const response = await groupService.getMyGroup()
 //       setUserGroup(response.data.data.group)
 //     } catch (error) {
-//       // User might not be in a group
 //       setUserGroup(null)
+//       // Optionally show toast if needed
+//       // toast.error(error.response?.data?.message || 'Failed to fetch group')
 //     } finally {
 //       setLoading(false)
+//     }
+//   }
+
+//   // POST API - create a new group
+//   const createGroup = async () => {
+//     const groupName = prompt('Enter a group name:')
+//     if (!groupName) return
+
+//     const memberIdsString = prompt('Enter member IDs separated by commas:')
+//     if (!memberIdsString) return
+
+//     const memberIds = memberIdsString.split(',').map(id => id.trim())
+
+//     try {
+//       setCreating(true)
+//       const response = await groupService.createGroup({ name: groupName, memberIds })
+//       toast.success(response.data.message)
+//       fetchUserGroup() // Refresh group info after creation
+//     } catch (error) {
+//       toast.error(error.response?.data?.message || 'Failed to create group')
+//     } finally {
+//       setCreating(false)
 //     }
 //   }
 
@@ -65,10 +93,16 @@ import toast from 'react-hot-toast'
 //                   ))}
 //                 </div>
 //                 <div className="flex space-x-3">
-//                   <button className="btn-primary">
+//                   <button
+//                     className="btn-primary"
+//                     onClick={() => toast('Manage Group clicked')}
+//                   >
 //                     Manage Group
 //                   </button>
-//                   <button className="btn-secondary">
+//                   <button
+//                     className="btn-secondary"
+//                     onClick={() => toast('View Borrowed Books clicked')}
+//                   >
 //                     View Borrowed Books
 //                   </button>
 //                 </div>
@@ -82,9 +116,13 @@ import toast from 'react-hot-toast'
 //                 You're not currently a member of any group.
 //               </p>
 //               <div className="mt-6">
-//                 <button className="btn-primary">
+//                 <button
+//                   className="btn-primary flex items-center justify-center"
+//                   onClick={createGroup}
+//                   disabled={creating}
+//                 >
 //                   <PlusIcon className="h-5 w-5 mr-2" />
-//                   Create New Group
+//                   {creating ? 'Creating...' : 'Create New Group'}
 //                 </button>
 //               </div>
 //             </div>
@@ -99,6 +137,9 @@ const Groups = () => {
   const [userGroup, setUserGroup] = useState(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [showManageModal, setShowManageModal] = useState(false)
+  const [showBorrowedModal, setShowBorrowedModal] = useState(false)
+  const [borrowedBooks, setBorrowedBooks] = useState([])
 
   useEffect(() => {
     fetchUserGroup()
@@ -112,8 +153,6 @@ const Groups = () => {
       setUserGroup(response.data.data.group)
     } catch (error) {
       setUserGroup(null)
-      // Optionally show toast if needed
-      // toast.error(error.response?.data?.message || 'Failed to fetch group')
     } finally {
       setLoading(false)
     }
@@ -133,11 +172,22 @@ const Groups = () => {
       setCreating(true)
       const response = await groupService.createGroup({ name: groupName, memberIds })
       toast.success(response.data.message)
-      fetchUserGroup() // Refresh group info after creation
+      fetchUserGroup()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create group')
     } finally {
       setCreating(false)
+    }
+  }
+
+  // FETCH borrowed books for group
+  const handleViewBorrowed = async () => {
+    try {
+      const res = await groupService.getBorrowedBooks(userGroup._id)
+      setBorrowedBooks(res.data.data.books)
+      setShowBorrowedModal(true)
+    } catch (error) {
+      toast.error('Failed to fetch borrowed books')
     }
   }
 
@@ -157,7 +207,7 @@ const Groups = () => {
         </div>
       </div>
 
-      {/* Group Status */}
+      {/* Group Section */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           {userGroup ? (
@@ -183,13 +233,13 @@ const Groups = () => {
                 <div className="flex space-x-3">
                   <button
                     className="btn-primary"
-                    onClick={() => toast('Manage Group clicked')}
+                    onClick={() => setShowManageModal(true)}
                   >
                     Manage Group
                   </button>
                   <button
                     className="btn-secondary"
-                    onClick={() => toast('View Borrowed Books clicked')}
+                    onClick={handleViewBorrowed}
                   >
                     View Borrowed Books
                   </button>
@@ -199,7 +249,9 @@ const Groups = () => {
           ) : (
             <div className="text-center py-12">
               <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No group membership</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No group membership
+              </h3>
               <p className="mt-1 text-sm text-gray-500">
                 You're not currently a member of any group.
               </p>
@@ -217,8 +269,27 @@ const Groups = () => {
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      {showManageModal && (
+        <ManageGroupModal
+          group={userGroup}
+          onClose={() => setShowManageModal(false)}
+          onUpdate={fetchUserGroup}
+        />
+      )}
+
+      {showBorrowedModal && (
+        <BorrowedBooksModal
+          books={borrowedBooks}
+          onClose={() => setShowBorrowedModal(false)}
+        />
+      )}
     </div>
   )
 }
+
+
+
 
 export default Groups
