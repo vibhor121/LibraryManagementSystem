@@ -4,6 +4,7 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import AddBook from '../../components/Addbook'
+import EditBookModal from '../../components/EditBookModal'
 // const AdminBooks = () => {
 //   const [books, setBooks] = useState([])
 //   const [loading, setLoading] = useState(true)
@@ -262,6 +263,8 @@ const AdminBooks = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addBookModal, setAddBookModal] = useState(false);
+  const [editBookModal, setEditBookModal] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(null);
 
   // Fetch all books from backend
   const fetchBooks = async () => {
@@ -292,6 +295,56 @@ const AdminBooks = () => {
     setBooks([newBook, ...books]);
   };
 
+  // Handle book deletion
+  const handleDeleteBook = async (bookId) => {
+    if (!window.confirm('Are you sure you want to delete this book?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/books/${bookId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(data.message || 'Book deleted successfully!');
+        // Remove book from state
+        setBooks(books.filter(book => book._id !== bookId));
+      } else {
+        toast.error(data.message || 'Failed to delete book');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Something went wrong while deleting the book');
+    }
+  };
+
+  // Handle book editing
+  const handleEditBook = (book) => {
+    setSelectedBook(book);
+    setEditBookModal(true);
+  };
+
+  // Handle book updated
+  const handleBookUpdated = (updatedBook) => {
+    setBooks(books.map(book => 
+      book._id === updatedBook._id ? updatedBook : book
+    ));
+  };
+
+  // Close edit modal
+  const closeEditModal = () => {
+    setEditBookModal(false);
+    setSelectedBook(null);
+  };
+
   if (loading) return <LoadingSpinner size="lg" className="mt-8" />;
 
   return (
@@ -315,6 +368,14 @@ const AdminBooks = () => {
 
       {addBookModal && (
         <AddBook setaddBook={setAddBookModal} onBookAdded={handleBookAdded} />
+      )}
+
+      {editBookModal && selectedBook && (
+        <EditBookModal 
+          book={selectedBook} 
+          onClose={closeEditModal} 
+          onBookUpdated={handleBookUpdated} 
+        />
       )}
 
       {/* Books Table */}
@@ -365,10 +426,18 @@ const AdminBooks = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{book.price}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button className="text-primary-600 hover:text-primary-900">
+                      <button 
+                        onClick={() => handleEditBook(book)}
+                        className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-primary-50"
+                        title="Edit book"
+                      >
                         <PencilIcon className="h-4 w-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900">
+                      <button 
+                        onClick={() => handleDeleteBook(book._id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        title="Delete book"
+                      >
                         <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
