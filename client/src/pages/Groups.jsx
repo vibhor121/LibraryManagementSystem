@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { groupService } from '../services/groupService'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { UserGroupIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { UserGroupIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import ManageGroupModal from './ManageGroupModal'
 import BorrowedBooksModal from './BorrowedBooksModal'
 
 
@@ -167,15 +166,8 @@ import BorrowedBooksModal from './BorrowedBooksModal'
 const Groups = () => {
   const [userGroup, setUserGroup] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showManageModal, setShowManageModal] = useState(false)
   const [showBorrowedModal, setShowBorrowedModal] = useState(false)
   const [borrowedBooks, setBorrowedBooks] = useState([])
-
-  // Create Group form state
-  const [groupName, setGroupName] = useState('')
-  const [memberIds, setMemberIds] = useState([''])
 
   useEffect(() => {
     fetchUserGroup()
@@ -190,34 +182,6 @@ const Groups = () => {
       setUserGroup(null)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const createGroup = async (e) => {
-    e.preventDefault()
-    if (!groupName.trim()) {
-      toast.error('Please enter a group name')
-      return
-    }
-
-    const filteredIds = memberIds.filter((id) => id.trim() !== '')
-    if (filteredIds.length === 0) {
-      toast.error('Please add at least one member ID')
-      return
-    }
-
-    try {
-      setCreating(true)
-      const response = await groupService.createGroup({ name: groupName, memberIds: filteredIds })
-      toast.success(response.data.message || 'Group created successfully!')
-      setShowCreateModal(false)
-      setGroupName('')
-      setMemberIds([''])
-      fetchUserGroup()
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create group')
-    } finally {
-      setCreating(false)
     }
   }
 
@@ -293,104 +257,19 @@ const Groups = () => {
             <p className="mt-1 text-gray-500">
               You're not currently a member of any group.
             </p>
-            <div className="mt-6">
-              <button
-                className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg transition transform hover:-translate-y-1 hover:scale-105 hover:bg-indigo-700"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <PlusIcon className="h-5 w-5" />
-                Create New Group
-              </button>
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Groups are created and managed by administrators only. 
+                Contact your library administrator if you need to be added to a group.
+              </p>
             </div>
           </div>
         )}
       </div>
 
       {/* Modals */}
-      {showManageModal && (
-        <ManageGroupModal
-          group={userGroup}
-          onClose={() => setShowManageModal(false)}
-          onUpdate={fetchUserGroup}
-        />
-      )}
       {showBorrowedModal && (
         <BorrowedBooksModal books={borrowedBooks} onClose={() => setShowBorrowedModal(false)} />
-      )}
-
-      {/* Create Group Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-              Create New Group
-            </h2>
-            <form onSubmit={createGroup} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter group name"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Member IDs</label>
-                {memberIds.map((id, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Enter member ID"
-                      value={id}
-                      onChange={(e) => {
-                        const newIds = [...memberIds]
-                        newIds[index] = e.target.value
-                        setMemberIds(newIds)
-                      }}
-                      className="flex-1 border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                    />
-                    {index > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setMemberIds(memberIds.filter((_, i) => i !== index))}
-                        className="bg-red-500 text-white px-4 rounded-xl hover:bg-red-600 transition"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setMemberIds([...memberIds, ''])}
-                  className="text-indigo-600 hover:underline text-sm font-medium"
-                >
-                  + Add another member
-                </button>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-5 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50"
-                >
-                  {creating ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   )

@@ -788,7 +788,7 @@ const { body, validationResult } = require('express-validator');
 const Group = require('../models/Group');
 const User = require('../models/User');
 const BorrowRecord = require('../models/BorrowRecord');
-const { protect } = require('../middleware/auth');
+const { protect, isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -800,6 +800,7 @@ const router = express.Router();
 router.post(
   '/',
   protect,
+  isAdmin,
   [
     body('name')
       .trim()
@@ -820,16 +821,19 @@ router.post(
         });
       }
 
-      const { name, memberIds } = req.body;
-      const leaderId = req.user._id;
+      const { name, memberIds, leaderId } = req.body;
+      const adminId = req.user._id;
 
-      // Check if user already in active group
-      const existingGroup = await Group.findOne({ members: leaderId, isActive: true });
-      if (existingGroup) {
-        return res.status(400).json({
-          success: false,
-          message: 'You are already a member of an active group',
-        });
+      // Leader is optional - if provided, validate it's in the member list
+      let groupLeaderId = null;
+      if (leaderId) {
+        if (!memberIds.includes(leaderId)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Group leader must be included in the member list',
+          });
+        }
+        groupLeaderId = leaderId;
       }
 
       // Validate member IDs
@@ -841,7 +845,7 @@ router.post(
         });
       }
 
-      // Check if members are already in groups
+      // Check if members are already in groups or have unpaid fines
       for (const member of members) {
         const memberGroup = await Group.findOne({ members: member._id, isActive: true });
         if (memberGroup) {
@@ -850,11 +854,22 @@ router.post(
             message: `User ${member.name} is already a member of another group`,
           });
         }
+        
+        // Check if member has unpaid fines
+        if (member.totalFines > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `User ${member.name} has unpaid fines and cannot join a group`,
+          });
+        }
       }
 
-      // Create group
-      const allMembers = [leaderId, ...memberIds];
-      const group = await Group.create({ name, members: allMembers, leader: leaderId });
+      // Create group (leader is optional)
+      const groupData = { name, members: memberIds };
+      if (groupLeaderId) {
+        groupData.leader = groupLeaderId;
+      }
+      const group = await Group.create(groupData);
 
       await group.populate('members', 'name email phone');
       await group.populate('leader', 'name email');
@@ -898,13 +913,99 @@ router.get('/my-group', protect, async (req, res) => {
 });
 
 /**
- * @desc    Add member to group
+ * @desc    Get single group (Admin only)
+ * @route   GET /api/groups/:id
+ * @access  Private (Admin)
+ */
+router.get('/:id', protect, isAdmin, async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.id)
+      .populate('members', 'name email phone totalFines')
+      .populate('leader', 'name email')
+      .populate('borrowedBooks');
+
+    if (!group || !group.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Group not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { group }
+    });
+  } catch (error) {
+    console.error('Get group error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * @desc    Update group (Admin only)
+ * @route   PUT /api/groups/:id
+ * @access  Private (Admin)
+ */
+router.put('/:id', protect, isAdmin, [
+  body('name').optional().trim().isLength({ min: 2, max: 100 }).withMessage('Group name must be between 2 and 100 characters'),
+  body('leaderId').optional().isMongoId().withMessage('Valid leader ID is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { name, leaderId } = req.body;
+    const group = await Group.findById(req.params.id);
+
+    if (!group || !group.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Group not found'
+      });
+    }
+
+    if (name) group.name = name;
+    if (leaderId) {
+      // Validate that the new leader is a member of the group
+      if (!group.members.includes(leaderId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'New leader must be a member of the group'
+        });
+      }
+      group.leader = leaderId;
+    }
+
+    await group.save();
+    await group.populate('members', 'name email phone totalFines');
+    await group.populate('leader', 'name email');
+
+    res.json({
+      success: true,
+      message: 'Group updated successfully',
+      data: { group }
+    });
+  } catch (error) {
+    console.error('Update group error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * @desc    Add member to group (Admin only)
  * @route   PUT /api/groups/:id/add-member
- * @access  Private
+ * @access  Private (Admin)
  */
 router.put(
   '/:id/add-member',
   protect,
+  isAdmin,
   [body('memberId').isMongoId().withMessage('Valid member ID is required')],
   async (req, res) => {
     try {
@@ -961,13 +1062,14 @@ router.put(
 );
 
 /**
- * @desc    Remove member from group
+ * @desc    Remove member from group (Admin only)
  * @route   PUT /api/groups/:id/remove-member
- * @access  Private
+ * @access  Private (Admin)
  */
 router.put(
   '/:id/remove-member',
   protect,
+  isAdmin,
   [body('memberId').isMongoId().withMessage('Valid member ID is required')],
   async (req, res) => {
     try {
@@ -1028,13 +1130,14 @@ router.put(
 );
 
 /**
- * @desc    Transfer group leadership
+ * @desc    Transfer group leadership (Admin only)
  * @route   PUT /api/groups/:id/transfer-leadership
- * @access  Private
+ * @access  Private (Admin)
  */
 router.put(
   '/:id/transfer-leadership',
   protect,
+  isAdmin,
   [body('newLeaderId').isMongoId().withMessage('Valid new leader ID is required')],
   async (req, res) => {
     try {
@@ -1081,11 +1184,11 @@ router.put(
 );
 
 /**
- * @desc    Leave group
+ * @desc    Leave group (Admin only - for removing users)
  * @route   PUT /api/groups/:id/leave
- * @access  Private
+ * @access  Private (Admin)
  */
-router.put('/:id/leave', protect, async (req, res) => {
+router.put('/:id/leave', protect, isAdmin, async (req, res) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group || !group.isActive)
@@ -1119,18 +1222,15 @@ router.put('/:id/leave', protect, async (req, res) => {
 });
 
 /**
- * @desc    Disband group
+ * @desc    Delete group (Admin only)
  * @route   DELETE /api/groups/:id
- * @access  Private
+ * @access  Private (Admin)
  */
-router.delete('/:id', protect, async (req, res) => {
+router.delete('/:id', protect, isAdmin, async (req, res) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group || !group.isActive)
       return res.status(404).json({ success: false, message: 'Group not found' });
-
-    if (group.leader.toString() !== req.user._id.toString())
-      return res.status(403).json({ success: false, message: 'Only leader can disband group' });
 
     const activeBorrows = await BorrowRecord.countDocuments({
       group: group._id,
@@ -1140,15 +1240,15 @@ router.delete('/:id', protect, async (req, res) => {
     if (activeBorrows > 0)
       return res.status(400).json({
         success: false,
-        message: 'Cannot disband group with active borrow records',
+        message: 'Cannot delete group with active borrow records',
       });
 
     group.isActive = false;
     await group.save();
 
-    res.json({ success: true, message: 'Group disbanded successfully' });
+    res.json({ success: true, message: 'Group deleted successfully' });
   } catch (error) {
-    console.error('Disband group error:', error);
+    console.error('Delete group error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -1182,6 +1282,29 @@ router.get('/:groupId/borrowed-books', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Fetch borrowed books error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * @desc    Get all groups (Admin only)
+ * @route   GET /api/groups
+ * @access  Private (Admin)
+ */
+router.get('/', protect, isAdmin, async (req, res) => {
+  try {
+    const groups = await Group.find({ isActive: true })
+      .populate('members', 'name email phone totalFines')
+      .populate('leader', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: groups.length,
+      data: { groups }
+    });
+  } catch (error) {
+    console.error('Get all groups error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

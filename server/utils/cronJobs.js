@@ -1,6 +1,7 @@
 const BorrowRecord = require('../models/BorrowRecord');
 const User = require('../models/User');
 const Book = require('../models/Book');
+const Group = require('../models/Group');
 const { sendOverdueNotification, sendFineNotification } = require('./emailService');
 
 // Check for overdue books and send notifications
@@ -46,48 +47,59 @@ const checkOverdueBooks = async () => {
   }
 };
 
-// Check for books that have been overdue for more than 30 days and mark as lost
+// Check for books that have been overdue and apply missing book fines
 const checkLostBooks = async () => {
   try {
     console.log('Starting lost book check...');
     
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    // Find books that have been overdue for more than 30 days
-    const lostRecords = await BorrowRecord.find({
-      status: 'overdue',
-      dueDate: { $lt: thirtyDaysAgo }
-    }).populate('borrower book');
+    // Find all overdue books (any book past due date is considered missing)
+    const overdueRecords = await BorrowRecord.find({
+      status: { $in: ['borrowed', 'overdue'] },
+      dueDate: { $lt: new Date() }
+    }).populate('borrower book group');
 
-    console.log(`Found ${lostRecords.length} potentially lost books`);
+    console.log(`Found ${overdueRecords.length} overdue books`);
 
-    for (const record of lostRecords) {
+    for (const record of overdueRecords) {
       try {
-        // Mark as lost
-        record.status = 'lost';
-        record.condition = 'lost';
+        // Mark as overdue if not already
+        if (record.status === 'borrowed') {
+          record.status = 'overdue';
+        }
         
-        // Calculate fine for lost book
+        // Calculate fine for missing book (200% + daily late fees)
         const fine = record.calculateFine(record.book.price);
         await record.save();
 
-        // Update user's total fines
-        await User.findByIdAndUpdate(record.borrower._id, {
-          $inc: { totalFines: fine }
-        });
-
-        // Update book's borrowed copies count
-        await Book.findByIdAndUpdate(record.book._id, {
-          $inc: { borrowedCopies: -1 }
-        });
+        // Update user/group fines
+        if (record.group) {
+          // Group borrowing - distribute fine equally
+          const finePerMember = fine / record.group.members.length;
+          
+          // Update each member's total fines
+          for (const member of record.group.members) {
+            await User.findByIdAndUpdate(member._id, {
+              $inc: { totalFines: finePerMember }
+            });
+          }
+          
+          // Update group's total fines
+          await Group.findByIdAndUpdate(record.group._id, {
+            $inc: { totalFines: fine }
+          });
+        } else {
+          // Individual borrowing
+          await User.findByIdAndUpdate(record.borrower._id, {
+            $inc: { totalFines: fine }
+          });
+        }
 
         // Send email notification
         await sendFineNotification(record.borrower, record, record.book, fine, record.fineReason);
         
-        console.log(`Marked book as lost: ${record.book.title} for user: ${record.borrower.email}`);
+        console.log(`Applied missing book fine: ${record.book.title} for user: ${record.borrower.email}, fine: ₹${fine}`);
       } catch (error) {
-        console.error(`Error processing lost record ${record._id}:`, error);
+        console.error(`Error processing overdue record ${record._id}:`, error);
       }
     }
 

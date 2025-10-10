@@ -60,6 +60,39 @@ router.post('/individual', protect, [
       });
     }
 
+    // Check if user already has any book borrowed (one book at a time rule)
+    const existingUserBorrow = await BorrowRecord.findOne({
+      borrower: userId,
+      status: { $in: ['borrowed', 'overdue'] }
+    });
+
+    if (existingUserBorrow) {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only borrow one book at a time. Please return your current book first.'
+      });
+    }
+
+    // Check if user is in a group that has a book borrowed
+    const userGroup = await Group.findOne({ 
+      members: userId, 
+      isActive: true 
+    });
+    
+    if (userGroup) {
+      const groupBorrow = await BorrowRecord.findOne({
+        group: userGroup._id,
+        status: { $in: ['borrowed', 'overdue'] }
+      });
+      
+      if (groupBorrow) {
+        return res.status(400).json({
+          success: false,
+          message: 'Your group already has a book borrowed. Group members cannot borrow books individually while the group has an active borrowing.'
+        });
+      }
+    }
+
     // Check if user has unpaid fines
     const user = await User.findById(userId);
     if (user.totalFines > 0) {
@@ -74,7 +107,7 @@ router.post('/individual', protect, [
       book: bookId,
       borrower: userId,
       borrowDate: new Date(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now for individual
     });
 
     // Update book's borrowed copies count
@@ -171,6 +204,19 @@ router.post('/group', protect, [
       });
     }
 
+    // Check if group already has any book borrowed (one book at a time rule)
+    const existingGroupAnyBorrow = await BorrowRecord.findOne({
+      group: groupId,
+      status: { $in: ['borrowed', 'overdue'] }
+    });
+
+    if (existingGroupAnyBorrow) {
+      return res.status(400).json({
+        success: false,
+        message: 'This group can only borrow one book at a time. Please return the current book first.'
+      });
+    }
+
     // Check if any group member has unpaid fines
     const membersWithFines = group.members.filter(member => member.totalFines > 0);
     if (membersWithFines.length > 0) {
@@ -180,13 +226,33 @@ router.post('/group', protect, [
       });
     }
 
+    // Check if any group member already has a book borrowed individually
+    const membersWithIndividualBooks = [];
+    for (const member of group.members) {
+      const individualBorrow = await BorrowRecord.findOne({
+        borrower: member._id,
+        group: null, // Individual borrowing
+        status: { $in: ['borrowed', 'overdue'] }
+      });
+      if (individualBorrow) {
+        membersWithIndividualBooks.push(member.name);
+      }
+    }
+    
+    if (membersWithIndividualBooks.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Group members ${membersWithIndividualBooks.join(', ')} already have individual books borrowed. Group members cannot have both individual and group books at the same time.`
+      });
+    }
+
     // Create borrow record for group
     const borrowRecord = await BorrowRecord.create({
       book: bookId,
       borrower: userId, // Group leader or person who initiated the borrow
       group: groupId,
       borrowDate: new Date(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      dueDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 180 days (6 months) from now for group
     });
 
     // Update book's borrowed copies count
@@ -235,7 +301,7 @@ router.put('/return/:id', protect, [
       });
     }
 
-    const { condition, notes } = req.body;
+    const { condition, notes, actualReturnDate } = req.body;
     const borrowRecordId = req.params.id;
     const userId = req.user._id;
 
@@ -272,7 +338,7 @@ router.put('/return/:id', protect, [
     // Update borrow record
     borrowRecord.status = 'returned';
     borrowRecord.condition = condition;
-    borrowRecord.returnDate = new Date();
+    borrowRecord.returnDate = actualReturnDate ? new Date(actualReturnDate) : new Date();
     borrowRecord.notes = notes;
 
     // Calculate fine based on condition and time

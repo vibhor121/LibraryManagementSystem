@@ -16,6 +16,7 @@ import Profile from './pages/Profile'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminBooks from './pages/admin/AdminBooks'
 import AdminUsers from './pages/admin/AdminUsers'
+import AdminGroups from './pages/admin/AdminGroups'
 import AdminBorrows from './pages/admin/AdminBorrows'
 import AdminFeedback from './pages/admin/AdminFeedback'
 
@@ -159,6 +160,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute adminOnly>
             <AdminUsers />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/groups" 
+        element={
+          <ProtectedRoute adminOnly>
+            <AdminGroups />
           </ProtectedRoute>
         } 
       />

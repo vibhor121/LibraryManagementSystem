@@ -155,24 +155,37 @@ const BookDetail = () => {
             </div>
 
             {book.availableCopies > 0 ? (
-              <div className="space-y-3">
-                <button
-                  onClick={handleBorrowIndividual}
-                  disabled={borrowing}
-                  className="w-full btn-primary"
-                >
-                  {borrowing ? 'Borrowing...' : 'Borrow Individually'}
-                </button>
-                
-                {userGroup && (
+              <div className="space-y-4">
+                <div className="space-y-3">
                   <button
-                    onClick={handleBorrowGroup}
+                    onClick={handleBorrowIndividual}
                     disabled={borrowing}
-                    className="w-full btn-secondary"
+                    className="w-full btn-primary"
                   >
-                    {borrowing ? 'Borrowing...' : `Borrow for Group: ${userGroup.name}`}
+                    {borrowing ? 'Borrowing...' : 'Borrow Individually (30 days)'}
                   </button>
-                )}
+                  
+                  {userGroup && (
+                    <button
+                      onClick={handleBorrowGroup}
+                      disabled={borrowing}
+                      className="w-full btn-secondary"
+                    >
+                      {borrowing ? 'Borrowing...' : `Borrow for Group: ${userGroup.name} (180 days)`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Borrowing Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Borrowing Rules</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Individual: 30 days, Group: 180 days</li>
+                    <li>• One book per person/group at a time</li>
+                    <li>• Late returns = 200% book price + ₹50/day</li>
+                    <li>• Group members cannot borrow individually while group has a book</li>
+                  </ul>
+                </div>
               </div>
             ) : (
               <div className="text-center py-4">

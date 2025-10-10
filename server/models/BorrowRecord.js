@@ -191,8 +191,8 @@ const borrowRecordSchema = new mongoose.Schema({
   },
   fineReason: {
     type: String,
-    enum: ['overdue', 'lost_after_month', 'lost_within_month', 'minor_damage', 'major_damage'],
-    required: false // <-- fixed: removed default null
+    enum: ['overdue', 'lost_after_month', 'lost_within_month', 'minor_damage', 'major_damage', null],
+    default: null
   },
   isFinePaid: {
     type: Boolean,
@@ -250,36 +250,38 @@ borrowRecordSchema.virtual('daysOverdue').get(function() {
 
 // Method to calculate fine based on condition and time
 borrowRecordSchema.methods.calculateFine = function(bookPrice) {
-  const now = new Date();
-  const isOverdue = now > this.dueDate;
-  const daysOverdue = isOverdue ? Math.ceil((now - this.dueDate) / (1000 * 60 * 60 * 24)) : 0;
+  const returnDate = this.returnDate || new Date();
+  const isOverdue = returnDate > this.dueDate;
+  const daysOverdue = isOverdue ? Math.ceil((returnDate - this.dueDate) / (1000 * 60 * 60 * 24)) : 0;
   
   let fine = 0;
   let reason = null;
   
-  switch (this.condition) {
-    case 'lost':
-      if (isOverdue) {
-        fine = (bookPrice * 2) + 50; // 200% of book cost + ₹50 fine
-        reason = 'lost_after_month';
-      } else {
+  // If book is returned after deadline, it's considered missing regardless of condition
+  if (isOverdue) {
+    // Missing book (returned after deadline) = 200% of book price + ₹50 per extra day
+    fine = (bookPrice * 2) + (daysOverdue * 50);
+    reason = 'lost_after_month';
+  } else {
+    // Book returned on time, check condition
+    switch (this.condition) {
+      case 'lost':
         fine = bookPrice * 2; // 200% of book cost only
         reason = 'lost_within_month';
-      }
-      break;
-    case 'minor_damage':
-      fine = bookPrice * 0.1; // 10% of book cost
-      reason = 'minor_damage';
-      break;
-    case 'major_damage':
-      fine = bookPrice * 0.5; // 50% of book cost
-      reason = 'major_damage';
-      break;
-    default:
-      if (isOverdue) {
-        fine = 50; // ₹50 fine for overdue
-        reason = 'overdue';
-      }
+        break;
+      case 'minor_damage':
+        fine = bookPrice * 0.1; // 10% of book cost
+        reason = 'minor_damage';
+        break;
+      case 'major_damage':
+        fine = bookPrice * 0.5; // 50% of book cost
+        reason = 'major_damage';
+        break;
+      default:
+        // Good condition, no fine
+        fine = 0;
+        reason = null;
+    }
   }
   
   this.fine = fine;

@@ -15,7 +15,7 @@ const groupSchema = new mongoose.Schema({
   leader: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Group leader is required']
+    required: false
   },
   maxMembers: {
     type: Number,
@@ -51,8 +51,8 @@ groupSchema.pre('save', function(next) {
     return next(new Error('Group must have between 3 and 6 members'));
   }
   
-  // Ensure leader is a member of the group
-  if (!this.members.includes(this.leader)) {
+  // Ensure leader is a member of the group (only if leader is specified)
+  if (this.leader && !this.members.includes(this.leader)) {
     return next(new Error('Group leader must be a member of the group'));
   }
   

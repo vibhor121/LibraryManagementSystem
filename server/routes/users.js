@@ -7,6 +7,47 @@ const { protect, isOwnerOrAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
+/**
+ * @desc    Search users for group invitations
+ * @route   GET /api/users/search
+ * @access  Private
+ */
+router.get('/search', protect, async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query must be at least 2 characters long'
+      });
+    }
+
+    const searchRegex = new RegExp(q.trim(), 'i');
+    const users = await User.find({
+      _id: { $ne: req.user._id }, // Exclude current user
+      isActive: true,
+      $or: [
+        { name: searchRegex },
+        { email: searchRegex }
+      ]
+    })
+    .select('name email phone')
+    .limit(parseInt(limit));
+
+    res.json({
+      success: true,
+      data: { users }
+    });
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 // @desc    Get user profile
 // @route   GET /api/users/:id
 // @access  Private

@@ -40,30 +40,45 @@ import api from './api'
  // Adjust path to your axios instance
 
 export const groupService = {
-  // Create a new group
+  // Admin: Get all groups
+  getAllGroups: () => api.get('/groups'),
+
+  // Admin: Get single group
+  getGroup: (groupId) => api.get(`/groups/${groupId}`),
+
+  // Admin: Create a new group
   createGroup: (groupData) => api.post('/groups', groupData),
 
-  // Get logged-in user's group
-  getMyGroup: () => api.get('/groups/my-group'),
+  // Admin: Update group
+  updateGroup: (groupId, groupData) => api.put(`/groups/${groupId}`, groupData),
 
-  // Add a member to group
+  // Admin: Add a member to group
   addMember: (groupId, memberId) =>
     api.put(`/groups/${groupId}/add-member`, { memberId }),
 
-  // Remove a member from group
+  // Admin: Remove a member from group
   removeMember: (groupId, memberId) =>
     api.put(`/groups/${groupId}/remove-member`, { memberId }),
 
-  // Transfer leadership
+  // Admin: Transfer leadership
   transferLeadership: (groupId, newLeaderId) =>
     api.put(`/groups/${groupId}/transfer-leadership`, { newLeaderId }),
 
-  // Leave a group
+  // Admin: Leave group (remove user)
   leaveGroup: (groupId) => api.put(`/groups/${groupId}/leave`),
 
-  // Disband a group
+  // Admin: Disband a group
   disbandGroup: (groupId) => api.delete(`/groups/${groupId}`),
+
+  // User: Get logged-in user's group
+  getMyGroup: () => api.get('/groups/my-group'),
 
   // Get borrowed books for a group
   getBorrowedBooks: (groupId) => api.get(`/groups/${groupId}/borrowed-books`),
+}
+
+// User search service for group invitations
+export const userService = {
+  // Search users for group invitations
+  searchUsers: (query, limit = 10) => api.get(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`),
 }

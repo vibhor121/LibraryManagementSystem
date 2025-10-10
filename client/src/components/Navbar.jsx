@@ -204,7 +204,6 @@ const Navbar = () => {
     { name: 'Dashboard', href: '/dashboard', icon: BookOpenIcon },
     { name: 'Books', href: '/books', icon: BookOpenIcon },
     { name: 'My Books', href: '/my-books', icon: BookOpenIcon },
-    { name: 'Groups', href: '/groups', icon: BookOpenIcon },
     { name: 'Feedback', href: '/feedback', icon: BookOpenIcon },
   ]
 
@@ -212,6 +211,7 @@ const Navbar = () => {
     { name: 'Admin Dashboard', href: '/admin', icon: Cog6ToothIcon },
     { name: 'Manage Books', href: '/admin/books', icon: BookOpenIcon },
     { name: 'Manage Users', href: '/admin/users', icon: UserIcon },
+    { name: 'Manage Groups', href: '/admin/groups', icon: BookOpenIcon },
     { name: 'Borrow Records', href: '/admin/borrows', icon: BookOpenIcon },
     { name: 'Manage Feedback', href: '/admin/feedback', icon: BookOpenIcon },
   ]
