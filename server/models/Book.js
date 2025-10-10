@@ -123,7 +123,7 @@ const bookSchema = new mongoose.Schema({
     type: String,
     required: [true, 'ISBN is required'],
     unique: true,
-    match: [/^(97(8|9))?\d{9}(\d|X)$/, 'Invalid ISBN'] // simpler regex for ISBN-10 & ISBN-13
+    minlength: [3, 'ISBN must be at least 3 characters long']
   },
   genre: { type: String, required: [true, 'Genre is required'], trim: true },
   description: { type: String, required: [true, 'Description is required'], maxlength: 1000 },

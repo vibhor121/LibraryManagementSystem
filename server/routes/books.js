@@ -387,8 +387,10 @@ router.post('/', protect, authorize('admin'), upload.single('coverImage'), async
     console.log('📥 req.body:', req.body);
     console.log('📸 req.file:', req.file);
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Cover image is required' });
+    // Cover image is optional - use default if not provided
+    let coverImageUrl = '';
+    if (req.file) {
+      coverImageUrl = req.file.path;
     }
 
     // Convert numeric fields
@@ -428,7 +430,7 @@ router.post('/', protect, authorize('admin'), upload.single('coverImage'), async
       pages,
       totalCopies,
       availableCopies: totalCopies,
-      coverImage: req.file.path
+      coverImage: coverImageUrl
     });
 
     console.log('✅ Book created:', newBook);
@@ -454,6 +456,104 @@ router.get('/', async (req, res) => {
   try {
     const books = await Book.find().sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: books });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// ----------------------
+// Update Book (Admin Only)
+// ----------------------
+router.put('/:id', protect, authorize('admin'), upload.single('coverImage'), async (req, res) => {
+  try {
+    console.log('📝 Updating book:', req.params.id);
+    console.log('📥 req.body:', req.body);
+    console.log('📸 req.file:', req.file);
+
+    const bookId = req.params.id;
+    
+    // Check if book exists
+    const existingBook = await Book.findById(bookId);
+    if (!existingBook) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+
+    // Cover image handling
+    let coverImageUrl = existingBook.coverImage;
+    if (req.file) {
+      coverImageUrl = req.file.path;
+    }
+
+    // Convert numeric fields
+    const price = parseFloat(req.body.price) || existingBook.price;
+    const publicationYear = parseInt(req.body.publicationYear) || existingBook.publicationYear;
+    const pages = parseInt(req.body.pages) || existingBook.pages;
+    const totalCopies = parseInt(req.body.totalCopies) || existingBook.totalCopies;
+
+    // Update book
+    const updatedBook = await Book.findByIdAndUpdate(
+      bookId,
+      {
+        title: req.body.title || existingBook.title,
+        author: req.body.author || existingBook.author,
+        isbn: req.body.isbn || existingBook.isbn,
+        genre: req.body.genre || existingBook.genre,
+        description: req.body.description || existingBook.description,
+        price,
+        publicationYear,
+        publisher: req.body.publisher || existingBook.publisher,
+        language: req.body.language || existingBook.language,
+        pages,
+        totalCopies,
+        coverImage: coverImageUrl,
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    );
+
+    console.log('✅ Book updated:', updatedBook);
+    res.status(200).json({ success: true, message: 'Book updated successfully!', data: updatedBook });
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// ----------------------
+// Delete Book (Admin Only)
+// ----------------------
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    console.log('🗑️ Deleting book:', req.params.id);
+
+    const bookId = req.params.id;
+    
+    // Check if book exists
+    const existingBook = await Book.findById(bookId);
+    if (!existingBook) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+
+    // Check if book has active borrows
+    const BorrowRecord = require('../models/BorrowRecord');
+    const activeBorrows = await BorrowRecord.find({ 
+      book: bookId, 
+      status: { $in: ['borrowed', 'overdue'] } 
+    });
+
+    if (activeBorrows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot delete book with active borrows. Please wait for all copies to be returned.' 
+      });
+    }
+
+    // Delete the book
+    await Book.findByIdAndDelete(bookId);
+
+    console.log('✅ Book deleted successfully');
+    res.status(200).json({ success: true, message: 'Book deleted successfully!' });
   } catch (error) {
     console.error('❌ Server error:', error);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });

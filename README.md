@@ -111,6 +111,30 @@ npm start
 - **Backend API**: http://localhost:5000
 - **API Health Check**: http://localhost:5000/api/health
 
+## 🔐 Demo Admin Credentials
+
+For testing purposes, you can use the following demo admin credentials:
+
+**Email:** `admin@library.com`  
+**Password:** `admin123`
+
+> **⚠️ Important:** These are demo credentials for development/testing only. Make sure to create your own admin account and change these credentials in production environments.
+
+### Creating Admin Account
+
+If the demo admin account doesn't exist, you can create it using the API:
+
+```bash
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Admin User",
+    "email": "admin@library.com",
+    "password": "admin123",
+    "role": "admin"
+  }'
+```
+
 ## 📋 Available Scripts
 
 ### Server Scripts (from server/ directory)
