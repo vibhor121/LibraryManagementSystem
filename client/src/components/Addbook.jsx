@@ -117,6 +117,10 @@ import React, { useState } from "react";
 // };
 
 
+
+
+
+
 // const AddBook = ({ setaddBook, onBookAdded }) => {
 //   const [form, setForm] = useState({
 //     title: "",
@@ -131,57 +135,64 @@ import React, { useState } from "react";
 //     pages: "",
 //     totalCopies: 1,
 //   });
+
 //   const [imageFile, setImageFile] = useState(null);
 //   const [loading, setLoading] = useState(false);
 
 //   const handleChange = (e) => {
 //     const { name, value } = e.target;
-//     setForm({ ...form, [name]: value });
+//     setForm((prev) => ({ ...prev, [name]: value }));
 //   };
 
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
 
-//     // Basic validation
-//     if (!form.title || !form.author || !form.price || !form.description || !form.publicationYear || !form.publisher) {
-//       toast.error("Please fill all required fields!");
-//       return;
+//     // Validation
+//     const requiredFields = ["title", "author", "price", "description", "publicationYear", "publisher"];
+//     for (const field of requiredFields) {
+//       if (!form[field]) {
+//         toast.error(`Please fill ${field}`);
+//         return;
+//       }
 //     }
 
 //     setLoading(true);
 
 //     try {
-//       let coverImageUrl = "";
-//       if (imageFile) {
-//         const formData = new FormData();
-//         formData.append("image", imageFile);
-//         const res = await fetch("http://localhost:5000/api/upload", {
-//           method: "POST",
-//           body: formData,
-//         });
-//         const data = await res.json();
-//         if (data.success) coverImageUrl = data.url;
-//         else toast.error("Image upload failed");
+//       const formData = new FormData();
+
+//       // Append all text fields
+//       Object.entries(form).forEach(([key, value]) => {
+//         formData.append(key, value);
+//       });
+
+//       // Append cover image file
+//       if (imageFile) formData.append("coverImage", imageFile);
+
+//       // Get JWT token from localStorage
+//       const token = localStorage.getItem("token"); // adjust key if different
+
+//       // Send POST request to API
+//       const res = await fetch("http://localhost:5000/api/books", {
+//         method: "POST",
+//         headers: {
+//           Authorization: `Bearer ${token}`, // include token
+//         },
+//         body: formData,
+//       });
+
+//       const data = await res.json();
+
+//       if (data.success) {
+//         toast.success(data.message || "Book added successfully!");
+//         onBookAdded(data.data); // pass new book to parent
+//         setaddBook(false); // close modal
+//       } else {
+//         toast.error(data.message || "Failed to add book");
 //       }
-
-//       // Prepare book payload
-//       const bookData = {
-//         ...form,
-//         price: parseFloat(form.price),
-//         publicationYear: parseInt(form.publicationYear),
-//         totalCopies: parseInt(form.totalCopies),
-//         availableCopies: parseInt(form.totalCopies),
-//         borrowedCopies: 0,
-//         coverImage: coverImageUrl, // backend expects this field
-//       };
-
-//       const response = await bookService.createBook(bookData);
-//       toast.success("Book added successfully!");
-//       onBookAdded(response.data.data.book);
-//       setaddBook(false);
 //     } catch (err) {
 //       console.error(err);
-//       toast.error(err.response?.data?.message || "Failed to add book");
+//       toast.error("Something went wrong while adding the book");
 //     } finally {
 //       setLoading(false);
 //     }
@@ -196,7 +207,9 @@ import React, { useState } from "react";
 //         >
 //           ×
 //         </button>
+
 //         <h1 className="text-2xl font-semibold mb-6 text-gray-800">Add New Book</h1>
+
 //         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
 //           <input type="text" name="title" placeholder="Book Title" value={form.title} onChange={handleChange} className="border p-2 rounded" required />
 //           <input type="text" name="isbn" placeholder="ISBN Number" value={form.isbn} onChange={handleChange} className="border p-2 rounded" />
@@ -209,10 +222,12 @@ import React, { useState } from "react";
 //           <input type="text" name="language" placeholder="Language" value={form.language} onChange={handleChange} className="border p-2 rounded" />
 //           <input type="number" name="pages" placeholder="Pages" value={form.pages} onChange={handleChange} className="border p-2 rounded" />
 //           <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} className="border p-2 rounded md:col-span-2" required />
+
 //           <div className="md:col-span-2">
 //             <label className="block text-sm font-medium text-gray-700 mb-1">Book Cover</label>
 //             <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
 //           </div>
+
 //           <button type="submit" disabled={loading} className="md:col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
 //             {loading ? "Adding..." : "Add Book"}
 //           </button>
@@ -221,7 +236,6 @@ import React, { useState } from "react";
 //     </div>
 //   );
 // };
-
 
 const AddBook = ({ setaddBook, onBookAdded }) => {
   const [form, setForm] = useState({
@@ -253,7 +267,7 @@ const AddBook = ({ setaddBook, onBookAdded }) => {
     const requiredFields = ["title", "author", "price", "description", "publicationYear", "publisher"];
     for (const field of requiredFields) {
       if (!form[field]) {
-        toast.error(`Please fill ${field}`);
+        alert(`Please fill ${field}`);
         return;
       }
     }
@@ -261,47 +275,41 @@ const AddBook = ({ setaddBook, onBookAdded }) => {
     setLoading(true);
 
     try {
-      let coverImageUrl = "";
+      const formData = new FormData();
 
-      // Upload image if selected
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
+      // Append all text fields
+      Object.entries(form).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
 
-        const res = await fetch("http://localhost:5000/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+      // Append cover image file
+      if (imageFile) formData.append("coverImage", imageFile);
 
-        const data = await res.json();
-        if (data.success) coverImageUrl = data.url;
-        else {
-          toast.error("Image upload failed");
-          setLoading(false);
-          return;
-        }
+      // Get JWT token from localStorage
+      const token = localStorage.getItem("token");
+
+      // Send POST request to API
+      const res = await fetch("http://localhost:5000/api/books", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      console.log("API Response:", data);
+
+      if (data.success) {
+        alert(data.message || "Book added successfully!");
+        onBookAdded(data.data); // pass new book to parent
+        setaddBook(false); // close modal
+      } else {
+        alert(data.message || "Failed to add book");
       }
-
-      // Prepare payload
-      const bookData = {
-        ...form,
-        price: parseFloat(form.price),
-        publicationYear: parseInt(form.publicationYear),
-        totalCopies: parseInt(form.totalCopies),
-        availableCopies: parseInt(form.totalCopies),
-        borrowedCopies: 0,
-        coverImage: coverImageUrl,
-      };
-
-      const response = await bookService.createBook(bookData);
-
-      // Show backend success message
-      toast.success(response.data.message || "Book added successfully!");
-      onBookAdded(response.data.data.book); // update parent list
-      setaddBook(false); // close modal
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to add book");
+      alert("Something went wrong while adding the book");
     } finally {
       setLoading(false);
     }
@@ -345,6 +353,5 @@ const AddBook = ({ setaddBook, onBookAdded }) => {
     </div>
   );
 };
-
 
 export default AddBook;
