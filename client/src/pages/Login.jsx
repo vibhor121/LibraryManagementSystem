@@ -146,16 +146,6 @@ import toast from 'react-hot-toast'
 //             </p>
 //           </div>
           
-//           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-//             <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Admin Credentials:</h3>
-//             <p className="text-xs text-blue-700">
-//               Email: <span className="font-mono">admin@library.com</span><br/>
-//               Password: <span className="font-mono">admin123</span>
-//             </p>
-//             <p className="text-xs text-blue-600 mt-1">
-//               (Create admin account first using the API endpoint)
-//             </p>
-//           </div>
 //         </div>
 //       </div>
 //     </div>
@@ -266,6 +256,24 @@ const Login = () => {
           </button>
         </form>
 
+        {/* Admin Credentials Demo */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+          <div className="text-center">
+            <h3 className="text-sm font-semibold text-amber-800 mb-2">🔐 Demo Admin Credentials</h3>
+            <div className="text-xs text-amber-700 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Email:</span>
+                <span className="font-mono bg-amber-100 px-2 py-1 rounded">admin@library.com</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Password:</span>
+                <span className="font-mono bg-amber-100 px-2 py-1 rounded">admin123</span>
+              </div>
+            </div>
+            <p className="text-xs text-amber-600 mt-2 italic">For testing purposes only</p>
+          </div>
+        </div>
+
         {/* Footer Links */}
         <div className="mt-6 text-center text-gray-600 text-sm">
           Don't have an account?{" "}
@@ -274,15 +282,6 @@ const Login = () => {
           </Link>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-8 bg-indigo-50 p-4 rounded-xl border-l-4 border-indigo-400">
-          <h3 className="text-sm font-semibold text-indigo-800">Demo Admin Credentials:</h3>
-          <p className="text-xs text-indigo-700 mt-1">
-            Email: <span className="font-mono">admin@library.com</span><br/>
-            Password: <span className="font-mono">admin123</span>
-          </p>
-          <p className="text-xs text-indigo-600 mt-1">(Create admin account first using the API)</p>
-        </div>
 
       </div>
     </div>
